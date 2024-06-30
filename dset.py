@@ -95,9 +95,19 @@ def collate(samples):
     g1, g2, labels, sames = map(list, zip(*samples))
     bg1 = dgl.batch(g1)
     bg2 = dgl.batch(g2)
-    labels = np.stack(labels)
-    sames = np.stack(sames)
-    return bg1, bg2, torch.tensor(labels), torch.tensor(sames)
+
+    labels = torch.zeros((bg1.number_of_nodes(), bg2.number_of_nodes()))
+    sames = torch.zeros((bg1.number_of_nodes(), bg2.number_of_nodes()))
+
+    curr_n1 = 0
+    curr_n2 = 0
+    for l, s in zip(labels, sames):
+        labels[curr_n1:curr_n1 + l.shape[0], curr_n2:curr_n2 + l.shape[1]] = l
+        sames[curr_n1:curr_n1 + s.shape[0], curr_n2:curr_n2 + s.shape[1]] = s
+        curr_n1 += l.shape[0]
+        curr_n2 += l.shape[1]
+
+    return bg1, bg2, labels, sames
 
 
 if __name__ == "__main__":
