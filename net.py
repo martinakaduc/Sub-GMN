@@ -1,30 +1,7 @@
-import torch as th
+
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torchvision import datasets, transforms
-from torch.autograd import Variable
-import matplotlib.pyplot as plt
-import dgl
-import networkx as nx
-import dgl.function as fn
-from dgl.data import MiniGCDataset
-import dgl.function as fn
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from dgl.nn.pytorch import SumPooling
-import numpy as np
-from dgl.data.utils import save_graphs, get_download_dir, load_graphs
-# from dgl.subgraph import DGLSubGraph
-from torch.utils.data import Dataset, DataLoader
-from dset import dgraph, collate
-from dgl.nn.pytorch.conv import GraphConv
-from torch.nn import Linear
-from dgl.nn.pytorch.conv import GraphConv
-from torch.nn import Linear
-from layers import three_gcn, cross_sim, att_layer, NTN
+from layers import three_gcn, att_layer, NTN
 
 
 class sub_GMN(torch.nn.Module):

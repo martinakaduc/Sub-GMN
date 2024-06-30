@@ -1,12 +1,9 @@
 import numpy as np
-import dgl
 import torch
-import torch.nn as nn
-import torch
-from dgl.nn.pytorch.conv import GraphConv
 
 
-def to_predict_matching(raw_predict_matching):  # raw_predict_matching  bx5x18  np.array
+# raw_predict_matching  bx5x18  np.array
+def to_predict_matching(raw_predict_matching):
     shape = raw_predict_matching.shape
     zeros = np.zeros(shape)
     dim2 = np.arange(shape[1])
