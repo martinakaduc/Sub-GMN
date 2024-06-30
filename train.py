@@ -60,6 +60,10 @@ def main(args):
 
     result_dir = os.path.join("results/", args.data_path.split("/")[-1])
     ckpt_dir = os.path.join("ckpts", args.data_path.split("/")[-1])
+    if not os.path.exists(result_dir):
+        os.makedirs(result_dir)
+    if not os.path.exists(ckpt_dir):
+        os.makedirs(ckpt_dir)
     result_file = f"result_matching{args.test_keys[9:-4]}.csv"
 
     GCN_in_size = args.embedding_dim
