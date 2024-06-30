@@ -1,28 +1,13 @@
-import torch as th
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torchvision import datasets, transforms
-from torch.autograd import Variable
-import matplotlib.pyplot as plt
 import dgl
 import networkx as nx
-import dgl.function as fn
-from dgl.data import MiniGCDataset
-import dgl.function as fn
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from dgl.nn.pytorch import SumPooling
 import numpy as np
-from dgl.data.utils import save_graphs, get_download_dir, load_graphs
-# from dgl.subgraph import DGLSubGraph
-from networkx.algorithms.isomorphism import GraphMatcher, DiGraphMatcher
+from dgl.data.utils import save_graphs
+from networkx.algorithms.isomorphism import DiGraphMatcher
 import networkx.algorithms.isomorphism as iso
 
 
-def shuju(num, n_da, n_xiao, P=0.4, sloop = False):
+def shuju(num, n_da, n_xiao, P=0.4, sloop=False):
     g1 = []
     g2 = []
     nm = iso.numerical_node_match('x', 1.0)
@@ -33,7 +18,8 @@ def shuju(num, n_da, n_xiao, P=0.4, sloop = False):
         if nx.is_connected(gg1) is True and nx.is_connected(sub_g) is True:
             ggg1 = dgl.DGLGraph()
             ggg1.from_networkx(gg1)
-            ggg1.ndata['x'] = torch.randint(1, 11, (n_da, 1), dtype=torch.float32)
+            ggg1.ndata['x'] = torch.randint(
+                1, 11, (n_da, 1), dtype=torch.float32)
             if sloop:
                 ggg1.add_edges(ggg1.nodes(), ggg1.nodes())
             ggg2 = ggg1.subgraph(sub)
@@ -57,6 +43,3 @@ g1, g2, label = shuju(num=200, n_da=18, n_xiao=7, sloop=False)
 graph_labels = {"glabel": label}
 save_graphs("./数据/0200te_18_7_g1.bin", g1, graph_labels)
 save_graphs("./数据/0200te_18_7_g2.bin", g2)
-
-
-

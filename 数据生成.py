@@ -3,7 +3,7 @@ import dgl
 import networkx as nx
 import numpy as np
 from dgl.data.utils import save_graphs
-from networkx.algorithms.isomorphism import GraphMatcher, DiGraphMatcher
+from networkx.algorithms.isomorphism import DiGraphMatcher
 import networkx.algorithms.isomorphism as iso
 
 
@@ -14,7 +14,7 @@ def to_m(label, q_size, g_size):  # label 是 np1d.array
     return m
 
 
-def same(q_f, da_f): # 2d array np
+def same(q_f, da_f):  # 2d array np
     z = []
     for i in q_f:
         a = (i == da_f).all(axis=1).astype(float).reshape(1, -1)
@@ -36,7 +36,8 @@ def data_generation1(core_size, whole_size, n, F, ppath, self_loop=False, p=0.3)
     aaaa = False
 
     while aaaa is not True:  # 防止出现 孤立点
-        g_q = nx.generators.random_graphs.fast_gnp_random_graph(n=core_size, p=p)
+        g_q = nx.generators.random_graphs.fast_gnp_random_graph(
+            n=core_size, p=p)
         aaaa = nx.is_connected(g_q)
 
     # adj_q = nx.to_numpy_matrix(g_q) # 邻接矩阵
@@ -52,7 +53,8 @@ def data_generation1(core_size, whole_size, n, F, ppath, self_loop=False, p=0.3)
     D_q = dgl.DGLGraph()
     D_q.from_networkx(nx_q)
     q_feature = E[F]
-    D_q.ndata['x'] = torch.tensor(torch.tensor(q_feature), dtype=torch.float32)  # 转DGL
+    D_q.ndata['x'] = torch.tensor(torch.tensor(
+        q_feature), dtype=torch.float32)  # 转DGL
 
     B = whole_size - core_size  # 合并图 的 大小
 
@@ -87,13 +89,15 @@ def data_generation1(core_size, whole_size, n, F, ppath, self_loop=False, p=0.3)
         F_B = np.random.randint(0, 10, size=B)
         F_whole = np.append(F, F_B)
         Da_feature = E[F_whole]
-        D_da.ndata['x'] = torch.tensor(torch.tensor(Da_feature), dtype=torch.float32)  # 转 dgl 图
+        D_da.ndata['x'] = torch.tensor(torch.tensor(
+            Da_feature), dtype=torch.float32)  # 转 dgl 图
 
         # test_da_q
         # test_da
         test_da = dgl.DGLGraph()
         test_da.from_networkx(nx_da)
-        test_da.ndata['x'] = torch.tensor(F_whole, dtype=torch.float32).reshape(-1, 1)
+        test_da.ndata['x'] = torch.tensor(
+            F_whole, dtype=torch.float32).reshape(-1, 1)
         # test_da
         # test_q
         test_q = dgl.DGLGraph()
@@ -101,9 +105,6 @@ def data_generation1(core_size, whole_size, n, F, ppath, self_loop=False, p=0.3)
         test_q.ndata['x'] = torch.tensor(F, dtype=torch.float32).reshape(-1, 1)
         # test_q
         # test_da_q
-
-
-
 
         # 检查是否唯一子图
         nx_da = test_da.to_networkx(node_attrs=['x'])
@@ -113,26 +114,18 @@ def data_generation1(core_size, whole_size, n, F, ppath, self_loop=False, p=0.3)
         if len(aa) == 1:
             path = ppath + str(i) + '.bin'
 
-            D_da.ndata['x'] = torch.tensor(D_da.ndata['x'], dtype=torch.float32)
+            D_da.ndata['x'] = torch.tensor(
+                D_da.ndata['x'], dtype=torch.float32)
             D_q.ndata['x'] = torch.tensor(D_q.ndata['x'], dtype=torch.float32)
 
             same_m = same(D_q.ndata['x'].numpy(), D_da.ndata['x'].numpy())
-            m = to_m(label=np.arange(core_size), q_size=core_size, g_size=whole_size)
+            m = to_m(label=np.arange(core_size),
+                     q_size=core_size, g_size=whole_size)
 
-            graph_labels = {'glabel': torch.tensor(m, dtype=torch.float32), 'same_m': torch.tensor(same_m, dtype=torch.float32)}
+            graph_labels = {'glabel': torch.tensor(
+                m, dtype=torch.float32), 'same_m': torch.tensor(same_m, dtype=torch.float32)}
             save_graphs(path, [D_da, D_q], graph_labels)
             i = i + 1
-
-
-
-
-
-
-
-
-
-
-
 
         # path = ppath + str(i) + '.bin'
         #
@@ -142,5 +135,3 @@ def data_generation1(core_size, whole_size, n, F, ppath, self_loop=False, p=0.3)
         # D_da.ndata['x'] = torch.tensor(D_da.ndata['x'], dtype=torch.float32)
         # D_q.ndata['x'] = torch.tensor(D_q.ndata['x'], dtype=torch.float32)
         # save_graphs(path, [D_da, D_q], graph_labels)
-
-
