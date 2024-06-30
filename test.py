@@ -46,16 +46,18 @@ b = './数据/test/'
 d_test = dgraph(root_dir=b)
 dset = dgraph(root_dir=a)
 batch_size = 32
-epoach = 5000
+epochs = 5000
 device = torch.device('cuda:0')
 weight_decay = 0.01
 reg_ture = True
 
-data_loader = DataLoader(dset, batch_size=batch_size, shuffle=True, collate_fn=collate)
-data_test = DataLoader(d_test, batch_size=100, shuffle=False, collate_fn=collate)
+data_loader = DataLoader(dset, batch_size=batch_size,
+                         shuffle=True, collate_fn=collate)
+data_test = DataLoader(d_test, batch_size=100,
+                       shuffle=False, collate_fn=collate)
 
 model = sub_GMN(GCN_in_size, GCN_out_size, q_size, da_size, NTN_k, mask=True)
-model.load_state_dict(torch.load('./mask_lzxmin_l2_5000epoach.pkl'))
+model.load_state_dict(torch.load('./mask_lzxmin_l2_5000epochs.pkl'))
 model.eval()
 model.to(device)
 

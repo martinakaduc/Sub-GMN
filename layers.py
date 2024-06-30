@@ -79,8 +79,9 @@ class three_gcn(torch.nn.Module):
         self.gcn2 = GraphConv(in_feats=self.out_size, out_feats=self.out_size)
         self.gcn3 = GraphConv(in_feats=self.out_size, out_feats=self.out_size)
 
-    def forward(self, graph, g_size):  # act nx2 的二维数组, 单张图输入一定要batch
+    def forward(self, graph):  # act nx2 的二维数组, 单张图输入一定要batch
         # print(graph)
+        g_size = graph.number_of_nodes()
 
         y = self.gcn1(graph=graph, feat=graph.ndata['x'])
         first_layer_node_em = torch.nn.functional.elu(y)
@@ -112,7 +113,8 @@ class cross_sim(torch.nn.Module):
         """
         torch.nn.init.xavier_uniform_(self.w)
 
-    def forward(self, batch_q_em, batch_da_em):  # batch_q_em bx5xc   batch_da_em bx18xc   torch.tensor
+    # batch_q_em bx5xc   batch_da_em bx18xc   torch.tensor
+    def forward(self, batch_q_em, batch_da_em):
         T_batch_da_em = torch.transpose(batch_da_em, 1, 2)
         cross = torch.matmul(batch_q_em, self.w)
         cross = torch.matmul(cross, T_batch_da_em)
@@ -130,12 +132,10 @@ def att_layer(batch_q_em, batch_da_em):  # batch_q_em bx5xc   batch_da_em bx18xc
 
 
 class NTN(torch.nn.Module):
-    def __init__(self, q_size, da_size, D, k):
+    def __init__(self, D, k):
         super(NTN, self).__init__()
         self.k = k
         self.D = D
-        self.q_size = q_size
-        self.da_size = da_size
         self.setup_weights()
         self.init_parameters()
 
@@ -155,27 +155,46 @@ class NTN(torch.nn.Module):
         torch.nn.init.xavier_uniform_(self.V)
         torch.nn.init.xavier_uniform_(self.b)
 
-    def forward(self, batch_q_em, batch_da_em):  # batch_q_em bx5xc   batch_da_em bx18xc   torch.tensor
-        batch_q_em_adddim = torch.unsqueeze(batch_q_em, 1)  # batch_q_em_adddim bx1x5xc   torch.tensor
-        batch_da_em_adddim = torch.unsqueeze(batch_da_em, 1)  # batch_da_em _adddim bx1x18xc   torch.tensor
-        T_batch_da_em_adddim = torch.transpose(batch_da_em_adddim, 2, 3)  # T_batch_da_em _adddim bx1xcx18   torch.tensor
+    # batch_q_em bx5xc   batch_da_em bx18xc   torch.tensor
+    def forward(self, batch_q_em, batch_da_em):
+        breakpoint()
+        q_size = batch_q_em.size()[1]
+        da_size = batch_da_em.size()[1]
+
+        # batch_q_em_adddim bx1x5xc   torch.tensor
+        batch_q_em_adddim = torch.unsqueeze(batch_q_em, 1)
+        # batch_da_em _adddim bx1x18xc   torch.tensor
+        batch_da_em_adddim = torch.unsqueeze(batch_da_em, 1)
+        # T_batch_da_em _adddim bx1xcx18   torch.tensor
+        T_batch_da_em_adddim = torch.transpose(batch_da_em_adddim, 2, 3)
         # first part
-        first = torch.matmul(batch_q_em_adddim, self.w)  # first bxkx5xc   torch.tensor
-        first = torch.matmul(first, T_batch_da_em_adddim)  # first bxkx5x18   torch.tensor
+        # first bxkx5xc   torch.tensor
+        first = torch.matmul(batch_q_em_adddim, self.w)
+        # first bxkx5x18   torch.tensor
+        first = torch.matmul(first, T_batch_da_em_adddim)
         # first part
         # second part
-        ed_batch_q_em = torch.unsqueeze(batch_q_em, 2)  # ed_batch_q_em bx5x1xc   torch.tensor
-        ed_batch_q_em = ed_batch_q_em.repeat(1, 1, self.da_size, 1)  # ed_batch_q_em bx5x18xc   torch.tensor
-        ed_batch_q_em = ed_batch_q_em.reshape(-1, self.q_size * self.da_size, self.D)  # ed_batch_q_em bx90xc
+        # ed_batch_q_em bx5x1xc   torch.tensor
+        ed_batch_q_em = torch.unsqueeze(batch_q_em, 2)
+        # ed_batch_q_em bx5x18xc   torch.tensor
+        ed_batch_q_em = ed_batch_q_em.repeat(1, 1, self.da_size, 1)
+        # ed_batch_q_em bx90xc
+        ed_batch_q_em = ed_batch_q_em.reshape(-1,
+                                              self.q_size * self.da_size, self.D)
 
-        ed_batch_da_em = torch.unsqueeze(batch_da_em, 1)  # ed_batch_da_em bx1x18xc   torch.tensor
-        ed_batch_da_em = ed_batch_da_em.repeat(1, self.q_size, 1, 1)  # ed_batch_da_em bx5x18xc   torch.tensor
-        ed_batch_da_em = ed_batch_da_em.reshape(-1, self.q_size * self.da_size, self.D)  # ed_batch_da_em bx90xc
+        # ed_batch_da_em bx1x18xc   torch.tensor
+        ed_batch_da_em = torch.unsqueeze(batch_da_em, 1)
+        # ed_batch_da_em bx5x18xc   torch.tensor
+        ed_batch_da_em = ed_batch_da_em.repeat(1, self.q_size, 1, 1)
+        # ed_batch_da_em bx90xc
+        ed_batch_da_em = ed_batch_da_em.reshape(-1,
+                                                self.q_size * self.da_size, self.D)
 
         mid = torch.cat([ed_batch_q_em, ed_batch_da_em], 2)  # mid bx90x2c
         mid = torch.transpose(mid, 1, 2)  # mid bx2cx90
         mid = torch.matmul(self.V, mid)  # mid bxkx90
-        mid = mid.reshape(-1, self.k, self.q_size, self.da_size)  # mid bxkx5x18
+        mid = mid.reshape(-1, self.k, self.q_size,
+                          self.da_size)  # mid bxkx5x18
         # second part
         end = first + mid + self.b
         return torch.sigmoid(end)  # end bxkx5x18
