@@ -52,8 +52,8 @@ class dgraph_v2(Dataset):
         n2 = graph_da.number_of_nodes()
         H2 = onehot_encoding_node(graph_da, self.embedding_dim)
 
-        graph_q = dgl.graph(graph_q)
-        graph_da = dgl.graph(graph_da)
+        graph_q = dgl.from_networkx(graph_q)
+        graph_da = dgl.from_networkx(graph_da)
 
         graph_q.ndata['x'] = torch.tensor(H1, dtype=torch.float32)
         graph_da.ndata['x'] = torch.tensor(H2, dtype=torch.float32)
