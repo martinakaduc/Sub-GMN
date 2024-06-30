@@ -205,7 +205,7 @@ def main(args):
         else:
             early_stop += 1
 
-        if early_stop > 3:
+        if early_stop >= 3:
             break
 
 
