@@ -88,7 +88,6 @@ class NTN(torch.nn.Module):
 
     # batch_q_em bx5xc   batch_da_em bx18xc   torch.tensor
     def forward(self, batch_q_em, batch_da_em):
-        breakpoint()
         q_size = batch_q_em.size()[1]
         da_size = batch_da_em.size()[1]
 
@@ -108,24 +107,22 @@ class NTN(torch.nn.Module):
         # ed_batch_q_em bx5x1xc   torch.tensor
         ed_batch_q_em = torch.unsqueeze(batch_q_em, 2)
         # ed_batch_q_em bx5x18xc   torch.tensor
-        ed_batch_q_em = ed_batch_q_em.repeat(1, 1, self.da_size, 1)
+        ed_batch_q_em = ed_batch_q_em.repeat(1, 1, da_size, 1)
         # ed_batch_q_em bx90xc
-        ed_batch_q_em = ed_batch_q_em.reshape(-1,
-                                              self.q_size * self.da_size, self.D)
+        ed_batch_q_em = ed_batch_q_em.reshape(-1, q_size * da_size, self.D)
 
         # ed_batch_da_em bx1x18xc   torch.tensor
         ed_batch_da_em = torch.unsqueeze(batch_da_em, 1)
         # ed_batch_da_em bx5x18xc   torch.tensor
-        ed_batch_da_em = ed_batch_da_em.repeat(1, self.q_size, 1, 1)
+        ed_batch_da_em = ed_batch_da_em.repeat(1, q_size, 1, 1)
         # ed_batch_da_em bx90xc
-        ed_batch_da_em = ed_batch_da_em.reshape(-1,
-                                                self.q_size * self.da_size, self.D)
+        ed_batch_da_em = ed_batch_da_em.reshape(-1, q_size * da_size, self.D)
 
         mid = torch.cat([ed_batch_q_em, ed_batch_da_em], 2)  # mid bx90x2c
         mid = torch.transpose(mid, 1, 2)  # mid bx2cx90
         mid = torch.matmul(self.V, mid)  # mid bxkx90
-        mid = mid.reshape(-1, self.k, self.q_size,
-                          self.da_size)  # mid bxkx5x18
+        mid = mid.reshape(-1, self.k, q_size, da_size)  # mid bxkx5x18
+
         # second part
         end = first + mid + self.b
         return torch.sigmoid(end)  # end bxkx5x18

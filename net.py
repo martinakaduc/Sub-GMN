@@ -31,6 +31,7 @@ class sub_GMN(torch.nn.Module):
         att1 = att_layer(batch_q_em=q1, batch_da_em=da1)  # att bx1x5x18
         N1_16 = self.NTN1(batch_q_em=q1, batch_da_em=da1)  # N1_16 bxkx5x18
         N1_16 = N1_16 * att1  # N1_16 bxkx5x18
+        breakpointpoint()
         he_1 = torch.cat([b_same_adddim, N1_16], dim=1)  # he_1 bx(k+1)x5x18
         end1 = self.Con1(he_1)  # end1 bx1x5x18
         end1 = torch.softmax(end1, dim=3)
