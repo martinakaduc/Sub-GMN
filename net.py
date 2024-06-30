@@ -31,7 +31,6 @@ class sub_GMN(torch.nn.Module):
         att1 = att_layer(batch_q_em=q1, batch_da_em=da1)  # att bx1x5x18
         N1_16 = self.NTN1(batch_q_em=q1, batch_da_em=da1)  # N1_16 bxkx5x18
         N1_16 = N1_16 * att1  # N1_16 bxkx5x18
-        breakpointpoint()
         he_1 = torch.cat([b_same_adddim, N1_16], dim=1)  # he_1 bx(k+1)x5x18
         end1 = self.Con1(he_1)  # end1 bx1x5x18
         end1 = torch.softmax(end1, dim=3)
@@ -53,7 +52,7 @@ class sub_GMN(torch.nn.Module):
         end = torch.cat([end1, end2, end3, he_1, he_2, he_3],
                         dim=1)  # end bx(3k+6)x5x18
         end = self.con_end(end)  # end bx1x5x18
-        end = end.reshape(-1, self.q_size, self.da_size)  # end bx5x18
+        end = end.squeeze(1)  # end bx5x18
 
         if self.mask:
             end = torch.softmax(end, dim=2)
