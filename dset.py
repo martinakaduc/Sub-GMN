@@ -96,15 +96,15 @@ def collate(samples):
     bg1 = dgl.batch(g1)
     bg2 = dgl.batch(g2)
 
-    labels_out = torch.zeros((bg2.number_of_nodes(), bg1.number_of_nodes()))
-    sames_out = torch.zeros((bg2.number_of_nodes(), bg1.number_of_nodes()))
+    labels_out = torch.zeros((1, bg2.number_of_nodes(), bg1.number_of_nodes()))
+    sames_out = torch.zeros((1, bg2.number_of_nodes(), bg1.number_of_nodes()))
 
     curr_n1 = 0
     curr_n2 = 0
     for l, s in zip(labels, sames):
-        labels_out[curr_n1:curr_n1 + l.shape[0],
+        labels_out[0, curr_n1:curr_n1 + l.shape[0],
                    curr_n2:curr_n2 + l.shape[1]] = torch.tensor(l)
-        sames_out[curr_n1:curr_n1 + s.shape[0],
+        sames_out[0, curr_n1:curr_n1 + s.shape[0],
                   curr_n2:curr_n2 + s.shape[1]] = torch.tensor(s)
         curr_n1 += l.shape[0]
         curr_n2 += l.shape[1]
