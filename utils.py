@@ -30,3 +30,28 @@ def acc_renzao(predict_matching, q_size, da_size):
     acc = acc.astype(float)
     acc = np.mean(acc)
     return acc
+
+
+def eval_mapping(groundtruth, predict_list):
+    acc = []
+    MRR = []
+
+    for sgn in groundtruth:
+        # Calculate precision
+        list_acc = []
+        for i in range(1, 11):
+            if groundtruth[sgn] in predict_list[sgn][:i]:
+                list_acc.append(1)
+            else:
+                list_acc.append(0)
+
+        acc.append(list_acc)
+
+        if groundtruth[sgn] in predict_list[sgn]:
+            MRR.append(1 / (predict_list[sgn].index(groundtruth[sgn]) + 1))
+        else:
+            MRR.append(0)
+
+    acc = np.mean(np.array(acc), axis=0)
+    MRR = np.mean(np.array(MRR))
+    return np.concatenate([acc, np.array([MRR])])

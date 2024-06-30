@@ -1,20 +1,21 @@
+import os
 import torch
+import time
 import random
 import argparse
 import numpy as np
 from torch.utils.data import DataLoader
-
+from collections import defaultdict
+from tqdm import tqdm
 from dset import dgraph_v2, collate
 from net import sub_GMN
 from zzh import Regularization
-from utils import to_predict_matching, acc_renzao
+from utils import to_predict_matching, acc_renzao, eval_mapping
 from sklearn.metrics import f1_score
 
 
 def set_seed(seed):
     random.seed(seed)
-    # torch.backends.cudnn.deterministic=True
-    # torch.backends.cudnn.benchmark = False
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -57,6 +58,10 @@ def parse_args():
 def main(args):
     set_seed(args.seed)
 
+    result_dir = os.path.join("results/", args.data_path.split("/")[-1])
+    ckpt_dir = os.path.join("ckpts", args.data_path.split("/")[-1])
+    result_file = f"result_matching{args.test_keys[9:-4]}.csv"
+
     GCN_in_size = args.embedding_dim
     GCN_out_size = args.d_graph_layer
     NTN_k = 16
@@ -86,15 +91,15 @@ def main(args):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     criterion = torch.nn.MSELoss().to(device)
 
-    min_test_loss = 10
-    max_acc = 0
-    f1_max = 0
+    early_stop = 0
+    max_mrr = 0
+    # max_acc = 0
+    # f1_max = 0
 
     for i in np.arange(epochs):
         print('epochs:  ', i)
         epochs_loss = []
-        for j, (bbg1, bbg2, lllabel, same) in enumerate(data_loader):
-            # print('batch:  ', j)
+        for j, (bbg1, bbg2, lllabel, same) in enumerate(tqdm(data_loader, desc=f"Training Epoch {i}")):
             bbg1 = bbg1.to(device)
             bbg2 = bbg2.to(device)
             b_lllabel = lllabel.to(device)
@@ -104,56 +109,100 @@ def main(args):
                 b_same, dtype=torch.bool).to(device))
             y_label = torch.masked_select(b_lllabel, torch.tensor(
                 b_same, dtype=torch.bool).to(device))
-            # print(y_Hat)
-            # print(y_label)
+
             loss = criterion(y_Hat, y_label)
 
-            # loss = criterion(y_hat, b_lllabel)
             if reg_ture:
                 loss = loss + reg(model)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             epochs_loss.append(float(loss.detach()))
-            # print(loss.detach().cpu().numpy())
-            # print('batch loss:  ', float(loss.detach()))
-        print('!!!!!!!!epochs_loss:  ', np.mean(epochs_loss))
-        torch.save(model.state_dict(), './train.pkl')
 
-        for k, (bbg1, bbg2, lllabel, same) in enumerate(data_test):
-            print('test!!!!!!:  ', k)
+        print('!!!!!!!!epochs_loss:  ', np.mean(epochs_loss))
+
+        list_results = []
+        start = time.time()
+        for k, (bbg1, bbg2, lllabel, same) in enumerate(tqdm(data_test, desc=f"Testing Epoch {i}")):
             bbg1 = bbg1.to(device)
             bbg2 = bbg2.to(device)
-            b_lllabel = lllabel.to(device)
             b_same = same.to(device)
             with torch.no_grad():
                 y_hat = model(bg_da=bbg1, bg_q=bbg2, b_same=b_same)
-                pass
-            # y_hat = model(bg_da=bbg1, bg_q=bbg2, b_same=b_same)
-            loss = criterion(y_hat, b_lllabel)
-            print('min_test_loss:  ', min_test_loss)
-            print('test_loss!!!!:  ', np.float(loss.detach()))
-            pre_matching = to_predict_matching(y_hat.detach().cpu().numpy())
-            print(same.numpy()[3])
-            print(y_hat.detach().cpu().numpy()[3])
-            print(pre_matching[3])
-            acc = acc_renzao(pre_matching, q_size, da_size)
-            f1 = f1_score(y_true=list(b_lllabel.cpu().numpy().reshape(-1)), y_pred=list(pre_matching.reshape(-1)),
-                          average='binary', pos_label=1)
-            print('max_acc      :  ', max_acc)
-            print('acc          :  ', acc)
-            print('f1_max       :  ', f1_max)
-            print('f1           :  ', f1)
 
-            if acc > max_acc:
-                torch.save(model.state_dict(), './max_acc.pkl')
-                max_acc = acc
-            if np.float(loss.detach()) < min_test_loss:
-                torch.save(model.state_dict(), './min_loss.pkl')
-                min_test_loss = np.float(loss.detach())
-            if f1 > f1_max:
-                torch.save(model.state_dict(), './max_f1.pkl')
-                f1_max = f1
+            # y_hat = model(bg_da=bbg1, bg_q=bbg2, b_same=b_same)
+            # loss = criterion(y_hat, b_lllabel)
+            # pre_matching = to_predict_matching(y_hat.detach().cpu().numpy())
+            # acc = acc_renzao(
+            #     pre_matching, bbg2.number_of_nodes(), bbg1.number_of_nodes())
+            # f1 = f1_score(y_true=list(b_lllabel.cpu().numpy().reshape(-1)), y_pred=list(pre_matching.reshape(-1)),
+            #               average='binary', pos_label=1)
+
+            gt_mapping = {}
+            x_coord, y_coord = np.where(lllabel[0] > 0)
+            for x, y in zip(x_coord, y_coord):
+                gt_mapping[x] = [y]  # Subgraph node: Graph node
+
+            pred_mapping = defaultdict(lambda: {})
+            mapping_pred = y_hat[0].detach().cpu().numpy()
+            x_coord, y_coord = np.where(mapping_pred > 0)
+
+            for x, y in zip(x_coord, y_coord):
+                pred_mapping[x][y] = mapping_pred[
+                    x, y
+                ]  # Subgraph node: Graph node
+
+            sorted_predict_mapping = defaultdict(lambda: [])
+            sorted_predict_mapping.update(
+                {
+                    k: [
+                        y[0]
+                        for y in sorted(
+                            [(n, prob) for n, prob in v.items()],
+                            key=lambda x: x[1],
+                            reverse=True,
+                        )
+                    ]
+                    for k, v in pred_mapping.items()
+                }
+            )
+
+            eval_mapping_results = eval_mapping(
+                gt_mapping, sorted_predict_mapping)
+
+            list_results.append(eval_mapping_results)
+
+        end = time.time()
+
+        list_results = np.array(list_results)
+        avg_results = np.mean(list_results, axis=0)
+
+        print("Test time: ", end - start)
+        print("Top1-Top10 Accuracy, MRR")
+        print(avg_results)
+
+        if avg_results[-1] > max_mrr:
+            early_stop = 0
+            max_mrr = avg_results[-1]
+            torch.save(model.state_dict(), os.path.join(
+                ckpt_dir, f"best_model.pkl"))
+
+            with open(
+                os.path.join(result_dir, result_file),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(
+                    "Time,Top1-Acc,Top2-Acc,Top3-Acc,Top4-Acc,Top5-Acc,Top6-Acc,Top7-Acc,Top8-Acc,Top9-Acc,Top10-Acc,MRR\n"
+                )
+                f.write("%f," % (end - start))
+                f.write(",".join([str(x) for x in avg_results]))
+                f.write("\n")
+        else:
+            early_stop += 1
+
+        if early_stop > 3:
+            break
 
 
 if __name__ == "__main__":
