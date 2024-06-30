@@ -38,12 +38,10 @@ def eval_mapping(groundtruth, predict_list):
 
     for sgn in groundtruth:
         # Calculate precision
-        list_acc = []
+        list_acc = [0] * 10
         for i in range(1, 11):
             if groundtruth[sgn] in predict_list[sgn][:i]:
-                list_acc.append(1)
-            else:
-                list_acc.append(0)
+                list_acc[i - 1] = 1
 
         acc.append(list_acc)
 

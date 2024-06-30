@@ -33,7 +33,7 @@ class dgraph_v2(Dataset):
         with open(os.path.join(root_dir, key_file), "rb") as fp:
             keys = pickle.load(fp)
 
-        self.graph_pairs = filter(lambda x: "iso" in x, keys)
+        self.graph_pairs = len(filter(lambda x: "iso" in x, keys))
         self.embedding_dim = embedding_dim
 
     def __getitem__(self, index):
